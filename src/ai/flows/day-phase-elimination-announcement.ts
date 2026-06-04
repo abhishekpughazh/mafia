@@ -45,7 +45,7 @@ Alive Players: {{{alivePlayersCount}}}
   Night has passed, and the first rays of dawn pierce through the veil of darkness. Miraculously, the night was quiet, and no one has been eliminated. A collective sigh of relief, perhaps, but the tension remains palpable. The town is still alive with {{{alivePlayersCount}}} souls, each harboring secrets. The day of discussion begins anew. What will this new day bring?
 {{/if}}
 
-Ensure the tone is suspenseful, dramatic, and sets the stage for the day's events.`
+Ensure the tone is suspenseful, dramatic, and sets the stage for the day's events. Return your response as a JSON object with the field "announcement".`
 });
 
 // Flow Definition
@@ -57,7 +57,10 @@ const dayPhaseAndEliminationAnnouncementFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await dayPhaseAnnouncementPrompt(input);
-    return output!.announcement;
+    if (!output?.announcement) {
+      throw new Error('AI failed to generate a day phase announcement.');
+    }
+    return output.announcement;
   }
 );
 
