@@ -3,22 +3,30 @@
 out/
 build/
 
-# Production
+# Node
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment
 .env
 .env.local
-.env.production
-.env.development
-
-# Firebase App Hosting
-.apphosting/
-
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
+.env.development.local
+.env.test.local
+.env.production.local
+.env*.local
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Firebase
+.firebase/
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# Genkit
+.genkit/
