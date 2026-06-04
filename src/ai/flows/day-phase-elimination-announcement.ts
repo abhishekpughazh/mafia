@@ -24,11 +24,16 @@ export type DayPhaseAndEliminationAnnouncementInput = z.infer<typeof DayPhaseAnd
 const DayPhaseAndEliminationAnnouncementOutputSchema = z.string().describe('A dramatic announcement for the start of the Day Phase, detailing night events.');
 export type DayPhaseAndEliminationAnnouncementOutput = z.infer<typeof DayPhaseAndEliminationAnnouncementOutputSchema>;
 
+// Internal Prompt Output Schema (for more robust JSON generation)
+const PromptOutputSchema = z.object({
+  announcement: z.string().describe('The dramatic announcement text.')
+});
+
 // Prompt Definition
 const dayPhaseAnnouncementPrompt = ai.definePrompt({
   name: 'dayPhaseAnnouncementPrompt',
   input: { schema: DayPhaseAndEliminationAnnouncementInputSchema },
-  output: { schema: DayPhaseAndEliminationAnnouncementOutputSchema },
+  output: { schema: PromptOutputSchema },
   prompt: `You are the mysterious and dramatic narrator for a game of Mafia. Your task is to announce the start of a new day phase, including any eliminations that occurred during the night.
 
 Current Day: Day {{{dayNumber}}}
@@ -52,7 +57,7 @@ const dayPhaseAndEliminationAnnouncementFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await dayPhaseAnnouncementPrompt(input);
-    return output!;
+    return output!.announcement;
   }
 );
 
