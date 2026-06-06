@@ -1,4 +1,4 @@
-import { db } from './firebase';
+import { getDb } from './firebase';
 import { ref, set, onValue, update, get, remove } from 'firebase/database';
 import { GameState, Player, RoleType, NightStep } from './types';
 
@@ -14,12 +14,12 @@ export function generateRoomCode() {
 
 export async function createRoom(initialState: GameState): Promise<string> {
   const roomId = generateRoomCode();
-  await set(ref(db, `rooms/${roomId}`), initialState);
+  await set(ref(getDb(), `rooms/${roomId}`), initialState);
   return roomId;
 }
 
 export function subscribeToRoom(roomId: string, callback: (state: GameState | null) => void) {
-  const roomRef = ref(db, `rooms/${roomId}`);
+  const roomRef = ref(getDb(), `rooms/${roomId}`);
   return onValue(roomRef, (snapshot) => {
     const data = snapshot.val();
     // Default players array if missing in Firebase (arrays can be omitted if empty)
@@ -31,11 +31,11 @@ export function subscribeToRoom(roomId: string, callback: (state: GameState | nu
 }
 
 export async function updateRoomState(roomId: string, partialState: Partial<GameState>) {
-  await update(ref(db, `rooms/${roomId}`), partialState);
+  await update(ref(getDb(), `rooms/${roomId}`), partialState);
 }
 
 export async function addPlayerToRoom(roomId: string, player: Player) {
-  const roomRef = ref(db, `rooms/${roomId}`);
+  const roomRef = ref(getDb(), `rooms/${roomId}`);
   const snapshot = await get(roomRef);
   if (snapshot.exists()) {
     const data = snapshot.val() as GameState;
@@ -54,7 +54,7 @@ export async function addPlayerToRoom(roomId: string, player: Player) {
 }
 
 export async function removePlayerFromRoom(roomId: string, playerId: string) {
-  const roomRef = ref(db, `rooms/${roomId}`);
+  const roomRef = ref(getDb(), `rooms/${roomId}`);
   const snapshot = await get(roomRef);
   if (snapshot.exists()) {
     const data = snapshot.val() as GameState;
@@ -65,5 +65,5 @@ export async function removePlayerFromRoom(roomId: string, playerId: string) {
 
 // Ensure cleanup on disconnect
 export async function deleteRoom(roomId: string) {
-  await remove(ref(db, `rooms/${roomId}`));
+  await remove(ref(getDb(), `rooms/${roomId}`));
 }

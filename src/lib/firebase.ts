@@ -1,7 +1,6 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getDatabase } from 'firebase/database';
+import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
+import { getDatabase, type Database } from 'firebase/database';
 
-// TODO: The user MUST provide their Firebase config here
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -12,8 +11,14 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Initialize Firebase
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+let _db: Database | null = null;
 
-// Initialize Realtime Database and get a reference to the service
-export const db = getDatabase(app);
+// Lazy initializer — never runs during SSR/static generation, only in the browser
+export function getDb(): Database {
+  if (!_db) {
+    const app: FirebaseApp =
+      getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    _db = getDatabase(app);
+  }
+  return _db;
+}
