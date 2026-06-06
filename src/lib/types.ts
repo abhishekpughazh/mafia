@@ -1,4 +1,5 @@
-export type RoleType = 'Mafia' | 'Doctor' | 'Detective' | 'Villager';
+export type RoleType = 'Mafia' | 'Godfather' | 'Doctor' | 'Detective' | 'Vigilante' | 'Bodyguard' | 'Mason' | 'Villager';
+export type NightStep = 'Mason' | 'Mafia' | 'Bodyguard' | 'Doctor' | 'Vigilante' | 'Detective' | 'DONE';
 
 export interface Player {
   id: string;
@@ -11,7 +12,6 @@ export interface Player {
 
 export type GamePhase = 
   | 'HOME' 
-  | 'SETUP' 
   | 'PLAYERS' 
   | 'ROLES' 
   | 'REVEAL' 
@@ -29,8 +29,11 @@ export interface GameState {
   currentPhase: GamePhase;
   revealingPlayerIndex: number;
   activeNightRoleIndex: number;
+  nightActionStep: NightStep | null;
   nightKilledPlayerId: string | null;
   doctorProtectedPlayerId: string | null;
+  bodyguardProtectedPlayerId: string | null;
+  vigilanteKilledPlayerId: string | null;
   detectiveInvestigatedPlayerId: string | null;
   detectiveResult: 'Suspicious' | 'Not Suspicious' | null;
   lastEliminatedPlayer: Player | null;
