@@ -8,7 +8,7 @@ import { PhaseWrapper } from '@/components/game/PhaseWrapper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Moon, Tv, Users, Eye, Skull, Gavel, Volume2, VolumeX, Timer } from 'lucide-react';
+import { Moon, Tv, Users, Eye, Skull, Gavel, Volume2, VolumeX, Timer, Plus, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RoleType, NightStep, GamePhase } from '@/lib/types';
 import { getLocalIp } from '@/app/actions';
@@ -22,6 +22,44 @@ export default function HostView() {
   const [muted, setMuted] = useState(false);
   const [discussionSecondsLeft, setDiscussionSecondsLeft] = useState(DISCUSSION_SECONDS);
   const [discussionAlarmFired, setDiscussionAlarmFired] = useState(false);
+
+  // ── Game setup (role configuration) ────────────────────────────────────────
+  const [targetPlayerCount, setTargetPlayerCount] = useState(5);
+  const [optionalRoles, setOptionalRoles] = useState({
+    Godfather: false,
+    Bodyguard: false,
+    Vigilante: false,
+    Mason: false,
+  });
+
+  const computeRoleConfig = (n: number, opts: typeof optionalRoles): Record<RoleType, number> => {
+    const mafia     = n >= 10 ? 3 : n >= 6 ? 2 : 1;
+    const godfather = opts.Godfather ? 1 : 0;
+    const bodyguard = opts.Bodyguard ? 1 : 0;
+    const vigilante = opts.Vigilante ? 1 : 0;
+    const mason     = opts.Mason     ? 2 : 0;
+    const fixed     = mafia + godfather + 1 + 1 + bodyguard + vigilante + mason; // doctor + detective
+    return {
+      Mafia:     mafia,
+      Godfather: godfather,
+      Doctor:    1,
+      Detective: 1,
+      Bodyguard: bodyguard,
+      Vigilante: vigilante,
+      Mason:     mason,
+      Villager:  Math.max(0, n - fixed),
+    };
+  };
+
+  const toggleOptional = (role: keyof typeof optionalRoles) => {
+    setOptionalRoles(prev => {
+      const next = { ...prev, [role]: !prev[role] };
+      const config = computeRoleConfig(targetPlayerCount, next);
+      // Revert if toggling on would leave no room (negative villagers)
+      if (config.Villager < 0) return prev;
+      return next;
+    });
+  };
 
   const prevPhaseRef = useRef<GamePhase | null>(null);
   const prevNarrationRef = useRef<string>('');
@@ -237,53 +275,169 @@ export default function HostView() {
     );
   }
 
-  // PLAYERS Phase (Waiting Room)
+  // PLAYERS Phase (Waiting Room + Setup)
   if (state.currentPhase === 'PLAYERS') {
+    const roleConfig = computeRoleConfig(targetPlayerCount, optionalRoles);
+    const joined = state.players.length;
+    const ready = joined === targetPlayerCount;
+    const over  = joined > targetPlayerCount;
+
+    const OPTIONAL_ROLE_META = [
+      { key: 'Godfather' as const, label: 'Godfather', cost: 1, color: 'text-red-400',   desc: 'Mafia team. Appears innocent to the Detective.' },
+      { key: 'Bodyguard' as const, label: 'Bodyguard', cost: 1, color: 'text-blue-400',  desc: 'Town. Protects a player; dies to kill their attacker.' },
+      { key: 'Vigilante' as const, label: 'Vigilante', cost: 1, color: 'text-green-400', desc: 'Town. Can shoot one person at night.' },
+      { key: 'Mason'     as const, label: 'Masons ×2', cost: 2, color: 'text-purple-400',desc: 'Town. Two players who know each other.' },
+    ];
+
     return (
-      <div className="flex flex-col min-h-screen p-8 bg-[#16181A] text-center">
+      <div className="flex min-h-screen bg-[#16181A] p-6 gap-6">
         <MuteButton />
-        <div className="space-y-4 pt-12 animate-in slide-in-from-top-10 duration-700">
-          <h1 className="text-4xl font-headline italic text-muted-foreground">Join the Game</h1>
-          <div className="inline-block bg-primary/20 border-2 border-primary rounded-xl px-12 py-6">
-            <p className="text-sm uppercase tracking-widest text-primary mb-2">Room Code</p>
-            <p className="text-8xl font-black tracking-widest text-white">{roomId}</p>
+
+        {/* ── Left: join info + player list ── */}
+        <div className="flex flex-col w-1/2 gap-6">
+          <div className="text-center space-y-3">
+            <h1 className="text-3xl font-headline italic text-muted-foreground">Join the Game</h1>
+            <div className="inline-block bg-primary/20 border-2 border-primary rounded-xl px-10 py-4">
+              <p className="text-xs uppercase tracking-widest text-primary mb-1">Room Code</p>
+              <p className="text-7xl font-black tracking-widest text-white">{roomId}</p>
+            </div>
+            <p className="text-lg text-muted-foreground">
+              Go to <span className="text-white font-bold">{localUrl}</span> on your phone
+            </p>
           </div>
-          <p className="text-xl text-muted-foreground mt-4">Go to <span className="text-white font-bold">{localUrl}</span> on your phone</p>
+
+          <div className="flex-1 overflow-auto">
+            <p className="text-sm uppercase text-muted-foreground mb-3 text-center">
+              {joined} / {targetPlayerCount} Players Joined
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              {state.players.map(p => (
+                <div key={p.id} className="bg-secondary/40 px-5 py-2 rounded-full border border-white/10 text-lg font-bold animate-in zoom-in">
+                  {p.name}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Status + start button */}
+          <div className="space-y-3">
+            {over && (
+              <p className="text-center text-sm text-orange-400">
+                {joined} players joined — increase the player count to {joined} or ask someone to leave.
+              </p>
+            )}
+            {!ready && !over && (
+              <p className="text-center text-sm text-muted-foreground">
+                Waiting for {targetPlayerCount - joined} more player{targetPlayerCount - joined !== 1 ? 's' : ''}…
+              </p>
+            )}
+            <Button
+              size="lg"
+              className="w-full h-16 text-xl"
+              disabled={!ready}
+              onClick={() => assignRoles(roleConfig)}
+            >
+              {ready ? 'Start Game' : `${joined} / ${targetPlayerCount} Players`}
+            </Button>
+          </div>
         </div>
 
-        <div className="flex-1 mt-12 overflow-auto max-h-[40svh] w-full max-w-2xl mx-auto">
-          <p className="text-sm uppercase text-muted-foreground mb-4">{state.players.length} Players Joined</p>
-          <div className="flex flex-wrap justify-center gap-4">
-            {state.players.map(p => (
-              <div key={p.id} className="bg-secondary/40 px-6 py-3 rounded-full border border-white/10 text-xl font-bold animate-in zoom-in">
-                {p.name}
+        {/* ── Right: game setup ── */}
+        <div className="flex flex-col w-1/2 gap-5">
+          <h2 className="text-2xl font-headline italic text-muted-foreground text-center">Game Setup</h2>
+
+          {/* Player count stepper */}
+          <div className="bg-secondary/20 border border-white/10 rounded-2xl p-5">
+            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-3 text-center">Number of Players</p>
+            <div className="flex items-center justify-center gap-6">
+              <button
+                onClick={() => setTargetPlayerCount(n => Math.max(5, n - 1))}
+                className="w-12 h-12 rounded-full bg-secondary border border-white/10 flex items-center justify-center hover:bg-secondary/80 transition-colors disabled:opacity-30"
+                disabled={targetPlayerCount <= 5}
+              >
+                <Minus className="w-5 h-5" />
+              </button>
+              <span className="text-5xl font-black w-16 text-center">{targetPlayerCount}</span>
+              <button
+                onClick={() => setTargetPlayerCount(n => Math.min(20, n + 1))}
+                className="w-12 h-12 rounded-full bg-secondary border border-white/10 flex items-center justify-center hover:bg-secondary/80 transition-colors"
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Base roles */}
+          <div className="bg-secondary/20 border border-white/10 rounded-2xl p-5 space-y-3">
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Base Roles</p>
+            <div className="flex flex-wrap gap-2">
+              {roleConfig.Mafia > 0 && (
+                <span className="px-3 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-bold">
+                  Mafia ×{roleConfig.Mafia}
+                </span>
+              )}
+              <span className="px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400 text-sm font-bold">Doctor ×1</span>
+              <span className="px-3 py-1 rounded-full bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 text-sm font-bold">Detective ×1</span>
+              {roleConfig.Villager > 0 && (
+                <span className="px-3 py-1 rounded-full bg-white/10 border border-white/20 text-muted-foreground text-sm font-bold">
+                  Villager ×{roleConfig.Villager}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Optional roles */}
+          <div className="bg-secondary/20 border border-white/10 rounded-2xl p-5 space-y-3 flex-1">
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Optional Roles</p>
+            <div className="space-y-2">
+              {OPTIONAL_ROLE_META.map(({ key, label, cost, color, desc }) => {
+                const enabled = optionalRoles[key];
+                const canEnable = roleConfig.Villager >= cost;
+                const canToggle = enabled || canEnable;
+                return (
+                  <button
+                    key={key}
+                    disabled={!canToggle}
+                    onClick={() => toggleOptional(key)}
+                    className={cn(
+                      "w-full flex items-center gap-4 p-3 rounded-xl border text-left transition-all",
+                      enabled
+                        ? "border-white/30 bg-white/10"
+                        : canToggle
+                          ? "border-white/10 bg-transparent hover:bg-white/5"
+                          : "border-white/5 bg-transparent opacity-40 cursor-not-allowed"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-6 h-6 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors",
+                      enabled ? "border-white bg-white" : "border-white/30"
+                    )}>
+                      {enabled && <div className="w-3 h-3 rounded-sm bg-[#16181A]" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className={cn("font-bold text-sm", color)}>{label}</span>
+                      <p className="text-xs text-muted-foreground leading-tight mt-0.5">{desc}</p>
+                    </div>
+                    {enabled && (
+                      <span className={cn("text-xs font-bold px-2 py-0.5 rounded-full bg-white/10", color)}>
+                        +{cost} slot{cost > 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Active optional role badges */}
+            {(roleConfig.Godfather > 0 || roleConfig.Bodyguard > 0 || roleConfig.Vigilante > 0 || roleConfig.Mason > 0) && (
+              <div className="flex flex-wrap gap-2 pt-2 border-t border-white/10">
+                {roleConfig.Godfather > 0 && <span className="px-3 py-1 rounded-full bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-bold">Godfather ×1</span>}
+                {roleConfig.Bodyguard > 0 && <span className="px-3 py-1 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-400 text-sm font-bold">Bodyguard ×1</span>}
+                {roleConfig.Vigilante > 0 && <span className="px-3 py-1 rounded-full bg-green-500/20 border border-green-500/30 text-green-400 text-sm font-bold">Vigilante ×1</span>}
+                {roleConfig.Mason > 0 && <span className="px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-400 text-sm font-bold">Masons ×2</span>}
               </div>
-            ))}
+            )}
           </div>
-        </div>
-
-        <div className="mt-auto space-y-4 max-w-md mx-auto w-full">
-          <p className="text-xs text-muted-foreground">
-            {state.players.length < 5 ? `Need ${5 - state.players.length} more players` : "Ready to start"}
-          </p>
-          <Button
-            size="lg"
-            className="w-full h-20 text-2xl"
-            disabled={state.players.length < 5}
-            onClick={() => {
-              const pCount = state.players.length;
-              const mafiaCount = pCount >= 10 ? 3 : pCount >= 6 ? 2 : 1;
-              const docCount = 1;
-              const detCount = 1;
-              const villagerCount = Math.max(0, pCount - mafiaCount - docCount - detCount);
-              assignRoles({
-                Mafia: mafiaCount, Godfather: 0, Doctor: docCount, Detective: detCount,
-                Vigilante: 0, Bodyguard: 0, Mason: 0, Villager: villagerCount
-              });
-            }}
-          >
-            Start Game
-          </Button>
         </div>
       </div>
     );
