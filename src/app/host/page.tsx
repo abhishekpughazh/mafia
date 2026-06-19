@@ -65,7 +65,7 @@ export default function HostView() {
       prevPhaseRef.current = phase;
 
       if (phase === 'REVEAL') {
-        narrate("Roles have been assigned. Everyone, check your phone in secret to see your role. Do not reveal it!", { rate: 0.85 });
+        narrate("Roles have been assigned. Check your phone to see your role. Keep it secret.", { rate: 0.90 });
         playChime();
       }
 
@@ -83,24 +83,24 @@ export default function HostView() {
       }
 
       if (phase === 'DISCUSSION') {
-        narrate(`Day ${state.dayNumber}. The town assembles. You have two minutes to discuss and find the Mafia. Debate carefully.`, { rate: 0.85 });
+        narrate(`Day ${state.dayNumber}. Discuss and find the Mafia. You have two minutes.`, { rate: 0.90 });
         // Start 2-minute countdown
         setDiscussionSecondsLeft(DISCUSSION_SECONDS);
         setDiscussionAlarmFired(false);
       }
 
       if (phase === 'VOTING') {
-        narrate("Time to vote. Who do you believe is the Mafia? Discuss your final choice, then the host will register the verdict.", { rate: 0.85 });
+        narrate("Time to vote. Who is the Mafia?", { rate: 0.90 });
         stopDiscussionTimer();
       }
 
       if (phase === 'GAME_OVER') {
         const winner = state.winner;
         if (winner === 'Mafia') {
-          narrate("The Mafia has seized control of the town. Evil has prevailed. Game over.", { rate: 0.80, pitch: 0.7 });
+          narrate("Mafia wins. Game over.", { rate: 0.90 });
           playElimination();
         } else {
-          narrate("Justice prevails! The town has rooted out all evil. Congratulations, Town!", { rate: 0.85, pitch: 1.1 });
+          narrate("Town wins. All Mafia have been eliminated.", { rate: 0.90 });
           playChime();
         }
       }
@@ -150,12 +150,12 @@ export default function HostView() {
 
     const COUNTDOWN = 'Ten. Nine. Eight. Seven. Six. Five. Four. Three. Two. One.';
     const STEP_LINES: Partial<Record<NightStep, string>> = {
-      Mason:     `Masons, open your eyes. Acknowledge your fellow Masons. ${COUNTDOWN} Close your eyes.`,
-      Mafia:     `Mafia, open your eyes. Who would you like to kill tonight? ${COUNTDOWN} Close your eyes.`,
-      Bodyguard: `Bodyguard, open your eyes. Who would you like to protect? ${COUNTDOWN} Close your eyes.`,
-      Doctor:    `Doctor, open your eyes. Who would you like to save? ${COUNTDOWN} Close your eyes.`,
-      Vigilante: `Vigilante, open your eyes. Choose someone to shoot, or skip your turn. ${COUNTDOWN} Close your eyes.`,
-      Detective: `Detective, open your eyes. Choose someone to investigate. ${COUNTDOWN} Close your eyes.`,
+      Mason:     `Masons, open your eyes. ${COUNTDOWN} Close your eyes.`,
+      Mafia:     `Mafia, open your eyes. ${COUNTDOWN} Close your eyes.`,
+      Bodyguard: `Bodyguard, open your eyes. ${COUNTDOWN} Close your eyes.`,
+      Doctor:    `Doctor, open your eyes. ${COUNTDOWN} Close your eyes.`,
+      Vigilante: `Vigilante, open your eyes. ${COUNTDOWN} Close your eyes.`,
+      Detective: `Detective, open your eyes. ${COUNTDOWN} Close your eyes.`,
     };
 
     const line = STEP_LINES[state.nightActionStep];
@@ -204,7 +204,7 @@ export default function HostView() {
     if (discussionSecondsLeft === 0 && !discussionAlarmFired && state?.currentPhase === 'DISCUSSION') {
       setDiscussionAlarmFired(true);
       playAlarm();
-      narrate("Time is up! The town must now cast their votes.", { rate: 0.90, pitch: 0.85 });
+      narrate("Time is up. Vote now.", { rate: 0.90 });
     }
   }, [discussionSecondsLeft]);
 
@@ -493,7 +493,7 @@ export default function HostView() {
                 onClick={() => {
                   eliminatePlayer(selectedPlayer.id);
                   playElimination();
-                  narrate(`${selectedPlayer.name} has been eliminated by the town.`, { rate: 0.80, pitch: 0.8 });
+                  narrate(`${selectedPlayer.name} has been eliminated.`, { rate: 0.90 });
                   setVotingSelectedId(null);
                 }}
               >
